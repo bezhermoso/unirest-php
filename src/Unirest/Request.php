@@ -33,6 +33,12 @@ class Request
     );
 
     /**
+     * curl options that are always added to the curl handle for each request.
+     * @var array
+     */
+    private static $persistentCurlOpts = [];
+
+    /**
      * Set JSON decode mode
      *
      * @param bool $assoc When TRUE, returned objects will be converted into associative arrays.
@@ -381,6 +387,26 @@ class Request
     }
 
     /**
+     * Makes it so that we re-use the curl handle that is reset everytime, instead of having to create new curl handles
+     * for each request.
+     */
+    private static function getHandleForSending()
+    {
+        if (isset(self::$handle)) {
+            curl_reset(self::$handle);
+            return self::$handle;
+        }
+
+        return self::$handle = curl_init();
+    }
+
+    public static function persistentCurlOpts(array $opts)
+    {
+        self::$persistentCurlOpts = $opts;
+    }
+
+
+    /**
      * Send a cURL request
      * @param \Unirest\Method|string $method HTTP method to use
      * @param string $url URL to send the request to
@@ -393,7 +419,7 @@ class Request
      */
     public static function send($method, $url, $body = null, $headers = array(), $username = null, $password = null)
     {
-        self::$handle = curl_init();
+        self::$handle = self::getHandleForSending();
 
         if ($method !== Method::GET) {
 			if ($method === Method::POST) {
@@ -430,7 +456,7 @@ class Request
             CURLOPT_ENCODING => ''
         ];
 
-        curl_setopt_array(self::$handle, self::mergeCurlOptions($curl_base_options, self::$curlOpts));
+        curl_setopt_array(self::$handle, self::mergeCurlOptions($curl_base_options, self::$persistentCurlOpts, self::$curlOpts));
 
         if (self::$socketTimeout !== null) {
             curl_setopt(self::$handle, CURLOPT_TIMEOUT, self::$socketTimeout);
