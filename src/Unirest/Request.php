@@ -39,6 +39,11 @@ class Request
     private static $persistentCurlOpts = [];
 
     /**
+     * @var bool|mixed
+     */
+    private static $reuseCurlHandle = false;
+
+    /**
      * Set JSON decode mode
      *
      * @param bool $assoc When TRUE, returned objects will be converted into associative arrays.
@@ -386,12 +391,21 @@ class Request
         return $result;
     }
 
+    public static function reuseCurlHandle($reuse = true)
+    {
+        self::$reuseCurlHandle = $reuse;
+    }
+
     /**
      * Makes it so that we re-use the curl handle that is reset everytime, instead of having to create new curl handles
      * for each request.
      */
     private static function getHandleForSending()
     {
+        if (!self::$reuseCurlHandle) {
+            return curl_init();
+        }
+
         if (isset(self::$handle)) {
             curl_reset(self::$handle);
             return self::$handle;
